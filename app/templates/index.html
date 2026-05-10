@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Job Match{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Welcome to Job Match Platform</h1>
+    <p class="subtitle">
+        AI-powered cloud-native Flask application for smart job and candidate matching.
+    </p>
+
+    <div class="hero-buttons">
+        <a href="/api/status" class="btn">API Status</a>
+        <a href="/api/info" class="btn btn-secondary">API Info</a>
+        <a href="/api/jobs" class="btn">Browse Jobs</a>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature-card">
+        <h3>12-Factor App</h3>
+        <p>Built with cloud-native principles.</p>
+    </div>
+
+    <div class="feature-card">
+        <h3>PostgreSQL Ready</h3>
+        <p>Prepared for scalable database integration.</p>
+    </div>
+
+    <div class="feature-card">
+        <h3>Redis Caching</h3>
+        <p>High-performance caching layer.</p>
+    </div>
+
+    <div class="feature-card">
+        <h3>Docker Support</h3>
+        <p>Container-ready deployment structure.</p>
+    </div>
+
+    <div class="feature-card">
+        <h3>CI/CD Pipeline</h3>
+        <p>GitHub Actions workflow support.</p>
+    </div>
+
+    <div class="feature-card">
+        <h3>Modular Architecture</h3>
+        <p>Clean separation with routes, models and services.</p>
+    </div>
+</div>
+
+<div class="getting-started">
+    <h2>Getting Started</h2>
+    <ol>
+        <li>Configure environment variables in <code>.env</code></li>
+        <li>Install dependencies: <code>pip install -r requirements.txt</code></li>
+        <li>Run the application: <code>python run.py</code></li>
+        <li>Open <code>http://127.0.0.1:5000</code></li>
+    </ol>
+</div>
+{% endblock %}
