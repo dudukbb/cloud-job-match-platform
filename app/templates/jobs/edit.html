@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Edit Job — Cloud Job Match{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h2 class="mb-4"><i class="bi bi-pencil me-2 text-primary"></i>Edit Job</h2>
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('jobs.edit_job', job_id=job.id) }}" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="title">Job Title</label>
+            <input type="text" class="form-control" id="title" name="title"
+                   value="{{ job.title }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="company">Company</label>
+            <input type="text" class="form-control" id="company" name="company"
+                   value="{{ job.company }}" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label" for="location">Location</label>
+              <input type="text" class="form-control" id="location" name="location"
+                     value="{{ job.location }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="job_type">Type</label>
+              <select class="form-select" id="job_type" name="job_type">
+                {% for t in ["Full-time","Part-time","Contract","Remote"] %}
+                <option value="{{ t }}" {% if job.job_type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="salary_range">Salary Range</label>
+            <input type="text" class="form-control" id="salary_range" name="salary_range"
+                   value="{{ job.salary_range or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control" id="description" name="description"
+                      rows="8" required>{{ job.description }}</textarea>
+          </div>
+          <div class="mb-4 form-check">
+            <input type="checkbox" class="form-check-input" id="is_active" name="is_active"
+                   {% if job.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">Active (accepting applications)</label>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>Save Changes
+            </button>
+            <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

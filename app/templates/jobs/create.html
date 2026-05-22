@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Post a Job — Cloud Job Match{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h2 class="mb-4"><i class="bi bi-plus-circle me-2 text-primary"></i>Post a Job</h2>
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('jobs.create_job') }}" novalidate>
+          {{ form.hidden_tag() }}
+
+          {# Job Title #}
+          <div class="mb-3">
+            {{ form.title.label(class="form-label") }}
+            <span class="text-danger">*</span>
+            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+            {% for error in form.title.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          {# Company #}
+          <div class="mb-3">
+            {{ form.company.label(class="form-label") }}
+            <span class="text-danger">*</span>
+            {{ form.company(class="form-control" + (" is-invalid" if form.company.errors else "")) }}
+            {% for error in form.company.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          {# Location + Employment Type #}
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              {{ form.location.label(class="form-label") }}
+              <span class="text-danger">*</span>
+              {{ form.location(class="form-control" + (" is-invalid" if form.location.errors else "")) }}
+              {% for error in form.location.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.job_type.label(class="form-label") }}
+              {{ form.job_type(class="form-select" + (" is-invalid" if form.job_type.errors else "")) }}
+              {% for error in form.job_type.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Required Skills #}
+          <div class="mb-4">
+            {{ form.required_skills.label(class="form-label") }}
+            <span class="text-muted small ms-1">(comma-separated)</span>
+            {{ form.required_skills(class="form-control" + (" is-invalid" if form.required_skills.errors else "")) }}
+            {% for error in form.required_skills.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+            <div class="form-text">e.g. Python, Docker, PostgreSQL, REST APIs</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-send me-1"></i>Post Job
+            </button>
+            <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

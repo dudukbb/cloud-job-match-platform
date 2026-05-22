@@ -1,306 +1,209 @@
-# Job Match - Professional Flask 12-Factor Cloud Application
+# Cloud Job Match Platform
 
-A production-ready Flask application structure following the 12-factor app methodology, cloud-native best practices, and modern Python standards.
+A production-ready, 12-factor Flask application for job posting and matching — containerised with Docker, backed by PostgreSQL and Redis, and deployable to any cloud provider.
+
+---
 
 ## Features
 
-✅ **12-Factor App Compliant**
-- Configuration from environment variables
-- Explicit dependency declaration
-- Clean separation of concerns
+| Feature | Details |
+|---|---|
+| **Auth** | Register / login / logout with bcrypt-hashed passwords |
+| **Job Listings** | Full CRUD (employers only), search & filter, paginated |
+| **Applications** | Job seekers apply with cover letter; employers manage status |
+| **Redis Cache** | Job listing pages cached with configurable TTL |
+| **Health Check** | `GET /health` — checks DB + Redis liveness |
+| **Structured Logging** | Timestamped logs emitted to stdout (Factor XI) |
+| **12-Factor Ready** | Config in env, stateless processes, dev/prod parity |
 
-✅ **Modular Architecture**
-- Routes, Services, Models separation
-- Blueprints for scalable routing
-- Factory pattern for app creation
+---
 
-✅ **Database Support**
-- PostgreSQL ready (psycopg2)
-- SQLAlchemy ORM
-- UUID primary keys
-- Timestamp mixins
+## Quick Start (Docker)
 
-✅ **Caching Layer**
-- Redis integration
-- Cache decorators
-- Session management
+```bash
+# 1. Clone and configure
+git clone <your-repo-url>
+cd job-match-folder
+cp .env.example .env          # edit SECRET_KEY at minimum
 
-✅ **Testing Framework**
-- pytest configuration
-- Test fixtures
-- Health check tests
-- API endpoint tests
+# 2. Start all services
+docker compose up --build
 
-✅ **Docker Support**
-- Multi-stage builds
-- docker-compose setup
-- PostgreSQL + Redis services
-- Non-root user execution
-- Health checks
+# 3. Visit the app
+open http://localhost:5000
+```
 
-✅ **CI/CD Pipeline**
-- GitHub Actions workflow
-- Automated testing
-- Code quality checks (flake8, black)
-- Docker image builds
-- Security scanning with Trivy
-- Deployment jobs
+Stop everything:
 
-✅ **Professional Frontend**
-- Jinja2 templates
-- Responsive CSS
-- JavaScript utilities
-- Modern UI components
+```bash
+docker compose down            # keeps postgres volume
+docker compose down -v         # also removes postgres volume
+```
+
+---
+
+## Local Development (without Docker)
+
+### Prerequisites
+
+- Python 3.12+
+- PostgreSQL 14+ running locally
+- Redis 7+ running locally
+
+### Setup
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -r requirements-dev.txt
+
+cp .env.example .env
+# Edit .env — set DATABASE_URL and REDIS_URL to your local services
+
+flask --app run:app run --debug
+```
+
+The app will be available at `http://localhost:5000`.
+
+### Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+---
 
 ## Project Structure
 
 ```
 job-match-folder/
-├── app/                          # Application package
-│   ├── __init__.py              # App factory
-│   ├── config.py                # Configuration management
-│   ├── models/                  # Database models
-│   │   ├── __init__.py
-│   │   └── base.py             # Base model classes
-│   ├── routes/                  # API routes (Blueprints)
-│   │   ├── __init__.py
-│   │   ├── health.py           # Health check endpoints
-│   │   └── api.py              # API endpoints
-│   ├── services/                # Business logic
-│   │   ├── __init__.py
-│   │   └── example_service.py  # Example service
-│   ├── utils/                   # Utilities
-│   │   ├── __init__.py
-│   │   └── decorators.py       # Custom decorators
-│   ├── templates/               # Jinja2 templates
-│   │   ├── base.html           # Base template
-│   │   └── index.html          # Home page
-│   └── static/                  # Static files
-│       ├── css/
-│       │   └── style.css       # Application styles
-│       └── js/
-│           └── script.js       # Application JavaScript
-├── tests/                       # Test suite
-│   ├── __init__.py
-│   ├── conftest.py             # pytest fixtures
-│   └── test_health.py          # Test cases
+├── app/
+│   ├── __init__.py          # Application factory (Factor I)
+│   ├── extensions.py        # Flask extensions (db, login, bcrypt, redis)
+│   ├── models.py            # SQLAlchemy models (User, Job, Application)
+│   ├── routes/
+│   │   ├── auth.py          # /auth/* — register, login, logout
+│   │   ├── jobs.py          # /jobs/* — CRUD + Redis-cached listings
+│   │   ├── applications.py  # /applications/* — apply, my-apps, status
+│   │   └── health.py        # /health — liveness probe
+│   └── templates/
+│       ├── base.html        # Bootstrap 5 layout
+│       ├── auth/            # login.html, register.html
+│       ├── jobs/            # list.html, detail.html, create.html, edit.html
+│       └── applications/    # my_applications.html
+├── tests/
+│   ├── conftest.py
+│   └── test_app.py
 ├── .github/
-│   └── workflows/
-│       └── ci-cd.yml           # GitHub Actions workflow
-├── Dockerfile                   # Docker image definition
-├── docker-compose.yml          # Docker Compose setup
-├── .dockerignore                # Docker ignore patterns
-├── .env.example                 # Environment variables template
-├── requirements.txt             # Python dependencies
-├── wsgi.py                      # WSGI entry point (production)
-├── run.py                       # Development server
-├── manage.py                    # Database management
-├── .gitignore                   # Git ignore patterns
-└── README.md                    # Documentation
+│   └── workflows/ci.yml     # GitHub Actions: test + docker build
+├── config.py                # Development / Testing / Production configs
+├── run.py                   # WSGI entry point
+├── Dockerfile               # Multi-stage build (builder + slim runtime)
+├── docker-compose.yml       # web + postgres + redis services
+├── requirements.txt
+├── requirements-dev.txt
+├── .env.example
+└── .gitignore
 ```
 
-## Quick Start
+---
 
-### Prerequisites
-- Python 3.11+
-- PostgreSQL 16+
-- Redis 7+
-- Docker & Docker Compose (optional)
+## Environment Variables (Factor III)
 
-### Local Development
+| Variable | Default | Description |
+|---|---|---|
+| `SECRET_KEY` | *(required)* | Flask session signing key |
+| `DATABASE_URL` | `postgresql://...@localhost/jobmatch` | PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| `CACHE_TTL` | `300` | Job listing cache lifetime in seconds |
+| `LOG_LEVEL` | `INFO` | Python logging level |
+| `JOBS_PER_PAGE` | `10` | Pagination size |
+| `SESSION_LIFETIME` | `3600` | Remember-me session duration (seconds) |
+| `FLASK_ENV` | `development` | `development`, `testing`, or `production` |
+| `PORT` | `5000` | HTTP port used by Gunicorn in containers |
+| `WEB_CONCURRENCY` | `2` | Gunicorn worker count |
+| `GUNICORN_TIMEOUT` | `60` | Gunicorn request timeout (seconds) |
+| `AUTO_CREATE_TABLES` | `true` | Auto-create DB schema on startup |
+| `TRUST_PROXY` | `false` | Trust reverse-proxy headers (`X-Forwarded-*`) |
+| `REQUIRE_STRONG_SECRET` | `false` | Fail startup if `SECRET_KEY` is insecure |
 
-1. **Clone and setup**
-```bash
-cd job-match-folder
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+---
 
-2. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
+## Cloud Deployment
 
-3. **Configure environment**
-```bash
-cp .env.example .env
-# Edit .env with your database credentials
-```
-
-4. **Run locally**
-```bash
-# Development server
-python run.py
-
-# WSGI server (production-like)
-gunicorn wsgi:app
-```
-
-5. **Access the application**
-- Home: http://localhost:5000
-- Health: http://localhost:5000/health
-- API: http://localhost:5000/api/v1/status
-
-### Docker Setup
+### Heroku
 
 ```bash
-# Build and run all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f web
-
-# Stop services
-docker-compose down
-
-# Database access via pgAdmin
-# URL: http://localhost:5050
-# Email: admin@example.com
-# Password: admin
+heroku create my-job-match
+heroku addons:create heroku-postgresql:essential-0
+heroku addons:create heroku-redis:mini
+heroku config:set SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+heroku config:set FLASK_ENV=production
+git push heroku main
 ```
 
-## Testing
+### AWS / GCP / Azure (Container)
 
-```bash
-# Run all tests
-pytest
+1. Push the Docker image to your container registry (ECR / Artifact Registry / ACR).
+2. Create a managed PostgreSQL instance and Redis instance.
+3. Deploy the image via ECS / Cloud Run / ACI.
+4. Inject environment variables via the platform's secrets / env-var mechanism.
+5. Point the load-balancer health check at `GET /health`.
 
-# With coverage
-pytest --cov=app
+### Kubernetes (minimal)
 
-# Specific test file
-pytest tests/test_health.py -v
+```yaml
+# Set DATABASE_URL and REDIS_URL as Kubernetes Secrets, then:
+kubectl create secret generic jobmatch-secrets \
+  --from-literal=SECRET_KEY=<value> \
+  --from-literal=DATABASE_URL=<value> \
+  --from-literal=REDIS_URL=<value>
 
-# Watch mode
-pytest-watch
+kubectl apply -f k8s/   # add your Deployment + Service manifests
 ```
 
-## Database Management
+---
 
-```bash
-# Create migration
-flask db init
-flask db migrate -m "message"
-flask db upgrade
+## The 12 Factors — How This App Addresses Each
 
-# Using manage.py
-python manage.py db init
-python manage.py db migrate
-python manage.py db upgrade
-```
+| # | Factor | Implementation |
+|---|---|---|
+| I | **Codebase** | Single repo, multiple deploys via environment |
+| II | **Dependencies** | `requirements.txt`; isolated in `venv` or Docker layer |
+| III | **Config** | All config via environment variables / `.env` |
+| IV | **Backing services** | PostgreSQL & Redis declared as attached resources in `docker-compose.yml` |
+| V | **Build, release, run** | Docker multi-stage build separates build from runtime |
+| VI | **Processes** | Stateless Flask process; sessions stored in signed cookies |
+| VII | **Port binding** | Gunicorn binds `0.0.0.0:$PORT`; exposed via Docker |
+| VIII | **Concurrency** | Scale via Gunicorn workers (`--workers`) or container replicas |
+| IX | **Disposability** | Fast startup; graceful shutdown via Gunicorn signals |
+| X | **Dev/prod parity** | Same Docker image in CI and production |
+| XI | **Logs** | Structured logs written to stdout; no log files |
+| XII | **Admin processes** | `flask shell` / `flask db` for one-off tasks |
 
-## Configuration
+---
 
-All configuration is managed through environment variables (.env file):
+## CI / CD
 
-```env
-# Flask
-FLASK_ENV=development
-SECRET_KEY=your-secret-key
+GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs on every push to `main`/`develop` and pull requests to `main`:
 
-# Database
-DB_USER=postgres
-DB_PASSWORD=password
-DB_HOST=localhost
-DB_NAME=job_match
+1. Spins up PostgreSQL and Redis service containers.
+2. Installs `requirements-dev.txt`.
+3. Runs `pytest tests/ -v`.
+4. Builds the Docker image to verify the `Dockerfile`.
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
+GitHub Actions CD workflow (`.github/workflows/cd.yml`) runs on pushes to `main`, version tags (`v*`), and manual triggers:
 
-# Application
-PORT=5000
-APP_VERSION=1.0.0
-```
+1. Logs in to GitHub Container Registry (`ghcr.io`).
+2. Builds the Docker image using Buildx.
+3. Publishes tags for branch, commit SHA, and release tags.
 
-## API Endpoints
-
-### Health Checks
-- `GET /health` - Full health check with dependencies
-- `GET /health/live` - Kubernetes liveness probe
-- `GET /health/ready` - Kubernetes readiness probe
-
-### API v1
-- `GET /api/v1/status` - API status
-- `GET /api/v1/example` - Get example data
-- `POST /api/v1/example` - Create example
-
-## Development Workflow
-
-1. **Create models** in `app/models/`
-2. **Implement services** in `app/services/`
-3. **Add routes** in `app/routes/`
-4. **Write tests** in `tests/`
-5. **Update templates** in `app/templates/`
-6. **Run tests** before committing
-
-## Production Deployment
-
-### Docker Deployment
-```bash
-docker build -t job-match:latest .
-docker run -d \
-  --name job-match \
-  -p 5000:5000 \
-  -e FLASK_ENV=production \
-  -e SECRET_KEY=$SECRET_KEY \
-  job-match:latest
-```
-
-### Kubernetes Deployment
-- Health checks configured (`/health/live`, `/health/ready`)
-- Non-root user for security
-- Graceful shutdown support
-- Environment-based configuration
-
-### Environment Variables for Production
-```env
-FLASK_ENV=production
-SECRET_KEY=<strong-secret-key>
-DB_HOST=<prod-db-host>
-DB_PASSWORD=<prod-db-password>
-REDIS_URL=redis://<prod-redis-host>:6379/0
-SESSION_COOKIE_SECURE=true
-```
-
-## CI/CD Pipeline
-
-GitHub Actions workflow includes:
-- **Testing**: pytest with coverage
-- **Linting**: flake8 and black
-- **Building**: Docker image builds
-- **Security**: Trivy vulnerability scanning
-- **Deployment**: Automated deployments to dev/prod
-
-## Best Practices
-
-✅ **Security**
-- Non-root Docker user
-- HTTPS in production (SESSION_COOKIE_SECURE)
-- Environment-based secrets
-- SQL injection prevention with ORM
-
-✅ **Performance**
-- Redis caching
-- Database connection pooling
-- Gevent workers
-- Proper indexes on models
-
-✅ **Monitoring**
-- Health check endpoints
-- Structured logging
-- Request logging
-- Error tracking (Sentry ready)
-
-✅ **Scalability**
-- Stateless application
-- Database migrations support
-- Horizontal scaling ready
-- Container orchestration ready
+---
 
 ## License
 
-MIT License
-
-## Support
-
-For issues and questions, please refer to the project documentation.
+MIT

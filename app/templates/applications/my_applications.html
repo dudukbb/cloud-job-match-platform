@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}My Applications — Cloud Job Match{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-file-earmark-text me-2 text-primary"></i>My Applications</h2>
+
+{% if applications %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Job</th>
+        <th>Company</th>
+        <th>Location</th>
+        <th>Applied On</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in applications %}
+      <tr>
+        <td>
+          <a href="{{ url_for('jobs.job_detail', job_id=app.job.id) }}" class="fw-semibold text-decoration-none">
+            {{ app.job.title }}
+          </a>
+        </td>
+        <td>{{ app.job.company }}</td>
+        <td>{{ app.job.location }}</td>
+        <td>{{ app.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          {% set badge = {
+            'pending': 'secondary',
+            'reviewed': 'info',
+            'accepted': 'success',
+            'rejected': 'danger'
+          } %}
+          <span class="badge bg-{{ badge.get(app.status, 'secondary') }}">
+            {{ app.status|title }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox display-4"></i>
+  <p class="mt-3">You haven't applied to any jobs yet.</p>
+  <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-primary mt-2">
+    <i class="bi bi-search me-1"></i>Browse Jobs
+  </a>
+</div>
+{% endif %}
+{% endblock %}

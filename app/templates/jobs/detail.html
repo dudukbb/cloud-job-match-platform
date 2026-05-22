@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} — Cloud Job Match{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('jobs.list_jobs') }}">Jobs</a></li>
+        <li class="breadcrumb-item active">{{ job.title }}</li>
+      </ol>
+    </nav>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h2 class="mb-1">{{ job.title }}</h2>
+            <p class="text-muted mb-1">
+              <i class="bi bi-building me-1"></i><strong>{{ job.company }}</strong>
+              &nbsp;&bull;&nbsp;
+              <i class="bi bi-geo-alt me-1"></i>{{ job.location }}
+            </p>
+          </div>
+          <span class="badge bg-info text-dark fs-6">{{ job.job_type }}</span>
+        </div>
+
+        {% if job.salary_range %}
+        <p class="text-success mt-2 mb-3">
+          <i class="bi bi-currency-dollar me-1"></i>{{ job.salary_range }}
+        </p>
+        {% endif %}
+
+        <hr>
+        <h5>Job Description</h5>
+        <div class="job-description" style="white-space: pre-wrap;">{{ job.description }}</div>
+
+        <p class="text-muted small mt-3">
+          Posted: {{ job.created_at.strftime('%B %d, %Y') }}
+          {% if not job.is_active %} &mdash; <span class="badge bg-secondary">Closed</span>{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- Apply section -->
+    {% if current_user.is_authenticated and not current_user.is_employer and job.is_active %}
+      {% if already_applied %}
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle-fill me-2"></i>You have already applied for this job.
+          <a href="{{ url_for('applications.my_applications') }}" class="alert-link">View your applications</a>
+        </div>
+      {% else %}
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <h5 class="mb-3"><i class="bi bi-send me-2 text-primary"></i>Apply Now</h5>
+            <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}">
+              <div class="mb-3">
+                <label class="form-label" for="cover_letter">Cover Letter <span class="text-muted">(optional)</span></label>
+                <textarea class="form-control" id="cover_letter" name="cover_letter"
+                          rows="5" placeholder="Tell the employer why you are a great fit…"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-send me-1"></i>Submit Application
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+    {% elif not current_user.is_authenticated %}
+      <div class="alert alert-info">
+        <a href="{{ url_for('auth.login') }}" class="alert-link">Log in</a> to apply for this job.
+      </div>
+    {% endif %}
+
+    <!-- Employer actions -->
+    {% if current_user.is_authenticated and current_user.id == job.employer_id %}
+    <div class="d-flex gap-2 mt-3">
+      <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      <form method="POST" action="{{ url_for('jobs.delete_job', job_id=job.id) }}"
+            onsubmit="return confirm('Delete this job? This cannot be undone.')">
+        <button type="submit" class="btn btn-outline-danger">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </form>
+    </div>
+
+    <!-- Applications list for employer -->
+    {% set apps = job.applications.all() %}
+    {% if apps %}
+    <div class="mt-4">
+      <h5>Applications ({{ apps|length }})</h5>
+      <div class="list-group">
+        {% for app in apps %}
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ app.applicant.username }}</strong>
+              <span class="text-muted ms-2 small">{{ app.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+            <form method="POST" action="{{ url_for('applications.update_status', app_id=app.id) }}"
+                  class="d-flex gap-2 align-items-center">
+              <select name="status" class="form-select form-select-sm" style="width:130px">
+                {% for s in ['pending','reviewed','accepted','rejected'] %}
+                <option value="{{ s }}" {% if app.status == s %}selected{% endif %}>{{ s|title }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+            </form>
+          </div>
+          {% if app.cover_letter %}
+          <p class="mt-2 mb-0 small text-muted" style="white-space:pre-wrap;">{{ app.cover_letter }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

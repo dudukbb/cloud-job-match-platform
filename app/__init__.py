@@ -1,250 +1,107 @@
-"""
-Flask Application Factory
-12-Factor App Architecture
-"""
-import os
 import logging
-from logging.handlers import RotatingFileHandler
+import sys
+import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_cors import CORS
-from flask_caching import Cache
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-# Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-cache = Cache()
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
+from sqlalchemy import inspect, text
+from werkzeug.middleware.proxy_fix import ProxyFix
+from config import config_map
+from app.extensions import db, login_manager, bcrypt, csrf
+import redis as redis_lib
 
 
-def create_app(config_name=None):
-    """
-    Application Factory Function
-    Creates and configures the Flask application
-    """
+logger = logging.getLogger(__name__)
 
-    app = Flask(__name__, instance_relative_config=True)
 
-    # Load configuration
-    from app.config import config
-
-    if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'development')
-
-    app.config.from_object(config[config_name])
-
-    # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    cache.init_app(app)
-
-    # Enable CORS
-    CORS(
-        app,
-        resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}}
+def configure_logging(log_level: str) -> None:
+    """Factor XI — emit structured logs to stdout."""
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S",
+        )
     )
+    root = logging.getLogger()
+    root.handlers = [handler]
+    root.setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    # Enable rate limiting
-    if app.config['RATELIMIT_ENABLED']:
-        limiter.init_app(app)
 
-    # Create instance folder
-    try:
-        os.makedirs(app.instance_path, exist_ok=True)
-    except OSError:
-        pass
+def ensure_local_schema_compatibility() -> None:
+    """Apply safe additive schema updates for local/dev environments."""
+    inspector = inspect(db.engine)
+    tables = set(inspector.get_table_names())
+    if "jobs" not in tables:
+        return
 
-    # Setup logging
-    setup_logging(app)
+    columns = {col["name"] for col in inspector.get_columns("jobs")}
 
-    # Create database tables
-    with app.app_context():
-        import app.models.base
-        db.create_all()
+    with db.engine.begin() as conn:
+        if "required_skills" not in columns:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS required_skills TEXT"))
+            logger.info("Applied schema patch: jobs.required_skills")
+
+        if "job_type" not in columns:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_type VARCHAR(50)"))
+            logger.info("Applied schema patch: jobs.job_type")
+
+        if "employment_type" in columns:
+            conn.execute(text(
+                """
+                UPDATE jobs
+                SET job_type = employment_type
+                WHERE employment_type IS NOT NULL
+                  AND (job_type IS NULL OR job_type = '')
+                """
+            ))
+            logger.info("Applied schema patch: backfilled jobs.job_type from jobs.employment_type")
+
+
+def create_app(config_name: str = "default") -> Flask:
+    app = Flask(__name__)
+    cfg = config_map.get(config_name, config_map["default"])
+    app.config.from_object(cfg)
+
+    configure_logging(app.config["LOG_LEVEL"])
+
+    # Factor III hardening in production, opt-in for backwards compatibility.
+    require_strong_secret = bool(app.config.get("REQUIRE_STRONG_SECRET", False))
+    if require_strong_secret and app.config.get("SECRET_KEY") == "change-me-in-production":
+        raise RuntimeError("SECRET_KEY must be set to a strong value in production")
+
+    if os.environ.get("TRUST_PROXY", "false").lower() == "true":
+        # Respect X-Forwarded-* headers when running behind cloud load balancers.
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+    # Initialise extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    bcrypt.init_app(app)
+    csrf.init_app(app)
+
+    # Redis — Factor IV: backing services as attached resources
+    import app.extensions as ext
+    ext.redis_client = redis_lib.from_url(
+        app.config["REDIS_URL"], decode_responses=True
+    )
 
     # Register blueprints
-    register_blueprints(app)
+    from app.routes.auth import auth_bp
+    from app.routes.jobs import jobs_bp
+    from app.routes.applications import applications_bp
+    from app.routes.health import health_bp
 
-    # Register error handlers
-    register_error_handlers(app)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(jobs_bp)
+    app.register_blueprint(applications_bp)
+    app.register_blueprint(health_bp)
 
-    # Register CLI commands
-    register_cli_commands(app)
-
-    app.logger.info(
-        f"App initialized - "
-        f"Environment: {app.config['ENVIRONMENT']} | "
-        f"Version: {app.config['APP_VERSION']}"
-    )
+    # Create tables (idempotent)
+    auto_create_tables = os.environ.get("AUTO_CREATE_TABLES", "true").lower() == "true"
+    with app.app_context():
+        if auto_create_tables:
+            db.create_all()
+            ensure_local_schema_compatibility()
+        else:
+            logger.info("AUTO_CREATE_TABLES=false, skipping startup schema creation")
 
     return app
-
-
-def setup_logging(app):
-    """
-    Configure application logging
-    """
-
-    if app.debug:
-        app.logger.setLevel(logging.DEBUG)
-    else:
-        app.logger.setLevel(logging.INFO)
-
-    # File logging only outside debug
-    if not app.debug and not app.config['TESTING']:
-
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-
-        formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s: '
-            '%(message)s [%(name)s:%(funcName)s:%(lineno)d]'
-        )
-
-        file_handler = RotatingFileHandler(
-            'logs/app.log',
-            maxBytes=10240000,
-            backupCount=10
-        )
-
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.INFO)
-
-        app.logger.addHandler(file_handler)
-
-        error_handler = RotatingFileHandler(
-            'logs/error.log',
-            maxBytes=10240000,
-            backupCount=10
-        )
-
-        error_handler.setFormatter(formatter)
-        error_handler.setLevel(logging.ERROR)
-
-        app.logger.addHandler(error_handler)
-
-        app.logger.info('Flask application startup')
-
-
-def register_blueprints(app):
-    """
-    Register Flask blueprints
-    """
-
-    from app.routes.health import health_bp
-    from app.routes.api import api_bp
-    from app.routes.auth import auth_bp
-
-    app.register_blueprint(
-        health_bp,
-        url_prefix="/health"
-    )
-
-    app.register_blueprint(
-        api_bp,
-        url_prefix="/api"
-    )
-
-    app.register_blueprint(
-        auth_bp,
-        url_prefix="/auth"
-    )
-
-    # Root route
-    @app.route("/")
-    def index():
-        from flask import render_template
-        return render_template("index.html")
-
-
-def register_error_handlers(app):
-    """
-    Register error handlers
-    """
-
-    from flask import jsonify
-
-    @app.errorhandler(400)
-    def bad_request_error(error):
-        return jsonify({
-            'error': 'Bad Request',
-            'message': str(error.description)
-        }), 400
-
-    @app.errorhandler(401)
-    def unauthorized_error(error):
-        return jsonify({
-            'error': 'Unauthorized',
-            'message': 'Authentication required'
-        }), 401
-
-    @app.errorhandler(403)
-    def forbidden_error(error):
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Access denied'
-        }), 403
-
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return jsonify({
-            'error': 'Not Found',
-            'message': 'Resource not found'
-        }), 404
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-
-        app.logger.error(
-            f'Internal server error: {str(error)}'
-        )
-
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred'
-        }), 500
-
-    @app.errorhandler(503)
-    def service_unavailable_error(error):
-        return jsonify({
-            'error': 'Service Unavailable',
-            'message': 'Service is temporarily unavailable'
-        }), 503
-
-
-def register_cli_commands(app):
-    """
-    Register CLI commands
-    """
-
-    import click
-
-    @app.cli.command()
-    def init_db():
-        """Initialize database"""
-        db.create_all()
-        click.echo('Initialized the database.')
-
-    @app.cli.command()
-    def drop_db():
-        """Drop database"""
-
-        if click.confirm(
-            'Are you sure you want to drop all tables?'
-        ):
-            db.drop_all()
-            click.echo('Dropped all tables.')
-
-    @app.cli.command()
-    def seed_db():
-        """Seed database"""
-        click.echo('Database seeding not yet implemented.')
-        
