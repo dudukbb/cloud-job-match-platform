@@ -11,10 +11,12 @@
       <tr>
         <th>Job</th>
         <th>Applicant</th>
+        <th>Status</th>
         <th>Match</th>
         <th>Matched Skills</th>
         <th>Missing Skills</th>
         <th>Resume</th>
+        <th>Decision</th>
       </tr>
     </thead>
     <tbody>
@@ -31,6 +33,19 @@
         <td>
           <div class="fw-semibold">{{ app.applicant.username }}</div>
           <div class="small text-muted">{{ app.applicant.email }}</div>
+        </td>
+        <td>
+          {% set badge = {
+            'Pending': 'secondary',
+            'Under Review': 'warning',
+            'Accepted': 'success',
+            'Rejected': 'danger',
+            'pending': 'secondary',
+            'reviewed': 'warning',
+            'accepted': 'success',
+            'rejected': 'danger'
+          } %}
+          <span class="badge text-bg-{{ badge.get(app.status, 'secondary') }}">{{ app.status }}</span>
         </td>
         <td>
           {% if match %}
@@ -61,6 +76,22 @@
           {% else %}
           <span class="text-muted small">No CV</span>
           {% endif %}
+        </td>
+        <td>
+          <div class="d-flex flex-wrap gap-1">
+            <form method="POST" action="{{ url_for('applications.update_status_by_path', app_id=app.id, new_status='under-review') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-warning">Under Review</button>
+            </form>
+            <form method="POST" action="{{ url_for('applications.update_status_by_path', app_id=app.id, new_status='accepted') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-success">Accept</button>
+            </form>
+            <form method="POST" action="{{ url_for('applications.update_status_by_path', app_id=app.id, new_status='rejected') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}

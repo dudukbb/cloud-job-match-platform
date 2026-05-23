@@ -132,8 +132,8 @@
                   class="d-flex gap-2 align-items-center">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="status" class="form-select form-select-sm" style="width:130px">
-                {% for s in ['pending','reviewed','accepted','rejected'] %}
-                <option value="{{ s }}" {% if app.status == s %}selected{% endif %}>{{ s|title }}</option>
+                {% for s in ['Pending','Under Review','Accepted','Rejected'] %}
+                <option value="{{ s }}" {% if app.status == s %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
               </select>
               <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>

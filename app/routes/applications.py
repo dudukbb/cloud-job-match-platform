@@ -17,6 +17,21 @@ import logging
 logger = logging.getLogger(__name__)
 applications_bp = Blueprint("applications", __name__, url_prefix="/applications")
 ALLOWED_RESUME_EXTENSIONS = {".pdf", ".docx"}
+STATUS_LOOKUP = {
+    "pending": "Pending",
+    "under review": "Under Review",
+    "under_review": "Under Review",
+    "under-review": "Under Review",
+    "reviewed": "Under Review",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+}
+
+
+def _canonical_status(raw_status: str | None) -> str | None:
+    if not raw_status:
+        return None
+    return STATUS_LOOKUP.get(raw_status.strip().lower())
 
 
 def _resume_upload_dir() -> Path:
@@ -160,20 +175,29 @@ def download_resume(app_id: int):
 @applications_bp.route("/<int:app_id>/status", methods=["POST"])
 @login_required
 def update_status(app_id: int):
+    requested_status = request.form.get("status", "")
+    return _update_application_status(app_id, requested_status)
+
+
+def _update_application_status(app_id: int, requested_status: str):
     application = Application.query.get_or_404(app_id)
-    # Only the job's employer may update status
     if application.job.employer_id != current_user.id:
         flash("Permission denied.", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
-    new_status = request.form.get("status", "pending")
-    allowed = {"pending", "reviewed", "accepted", "rejected"}
-    if new_status not in allowed:
+    canonical_status = _canonical_status(requested_status)
+    if not canonical_status:
         flash("Invalid status value.", "danger")
-        return redirect(url_for("jobs.job_detail", job_id=application.job_id))
+        return redirect(request.referrer or url_for("applications.review_applications"))
 
-    application.status = new_status
+    application.status = canonical_status
     db.session.commit()
-    logger.info("Application %s status -> %s by employer %s", app_id, new_status, current_user.id)
-    flash(f"Application status updated to '{new_status}'.", "success")
-    return redirect(url_for("jobs.job_detail", job_id=application.job_id))
+    logger.info("Application %s status -> %s by employer %s", app_id, canonical_status, current_user.id)
+    flash(f"Application status updated to '{canonical_status}'.", "success")
+    return redirect(request.referrer or url_for("applications.review_applications"))
+
+
+@applications_bp.route("/<int:app_id>/status/<string:new_status>", methods=["POST"])
+@login_required
+def update_status_by_path(app_id: int, new_status: str):
+    return _update_application_status(app_id, new_status)

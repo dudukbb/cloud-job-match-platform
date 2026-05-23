@@ -29,13 +29,17 @@
         <td>{{ app.created_at.strftime('%Y-%m-%d') }}</td>
         <td>
           {% set badge = {
+            'Pending': 'secondary',
+            'Under Review': 'warning',
+            'Accepted': 'success',
+            'Rejected': 'danger',
             'pending': 'secondary',
-            'reviewed': 'info',
+            'reviewed': 'warning',
             'accepted': 'success',
             'rejected': 'danger'
           } %}
-          <span class="badge bg-{{ badge.get(app.status, 'secondary') }}">
-            {{ app.status|title }}
+          <span class="badge text-bg-{{ badge.get(app.status, 'secondary') }}">
+            {{ app.status }}
           </span>
         </td>
       </tr>

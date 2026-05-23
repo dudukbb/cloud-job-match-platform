@@ -68,6 +68,20 @@ def ensure_local_schema_compatibility() -> None:
                 conn.execute(text("ALTER TABLE applications ADD COLUMN IF NOT EXISTS resume_path VARCHAR(500)"))
                 logger.info("Applied schema patch: applications.resume_path")
 
+            conn.execute(text(
+                """
+                UPDATE applications
+                SET status = CASE
+                    WHEN LOWER(status) = 'pending' THEN 'Pending'
+                    WHEN LOWER(status) IN ('reviewed', 'under review', 'under_review', 'under-review') THEN 'Under Review'
+                    WHEN LOWER(status) = 'accepted' THEN 'Accepted'
+                    WHEN LOWER(status) = 'rejected' THEN 'Rejected'
+                    ELSE status
+                END
+                WHERE status IS NOT NULL
+                """
+            ))
+
 
 def create_app(config_name: str = "default") -> Flask:
     app = Flask(__name__)
