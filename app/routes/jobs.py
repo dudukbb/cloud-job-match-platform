@@ -30,7 +30,6 @@ def list_jobs():
     cache_key = f"{CACHE_KEY_PREFIX}{page}:{search}:{job_type}"
     ttl = current_app.config["CACHE_TTL"]
 
-    # Try cache first
     if not search and not job_type:
         try:
             cached = ext.redis_client.get(cache_key)
@@ -51,16 +50,20 @@ def list_jobs():
             logger.warning("Cache read failed: %s", exc)
 
     query = Job.query.filter_by(is_active=True)
+
     if search:
         like = f"%{search}%"
         query = query.filter(
             Job.title.ilike(like) | Job.company.ilike(like) | Job.location.ilike(like)
         )
+
     if job_type:
         query = query.filter_by(job_type=job_type)
 
     pagination = query.order_by(Job.created_at.desc()).paginate(
-        page=page, per_page=current_app.config["JOBS_PER_PAGE"], error_out=False
+        page=page,
+        per_page=current_app.config["JOBS_PER_PAGE"],
+        error_out=False,
     )
 
     jobs_list = [
@@ -88,21 +91,35 @@ def list_jobs():
         except Exception as exc:
             logger.warning("Cache write failed: %s", exc)
 
-    return render_template("jobs/list.html", jobs=jobs_list, page=page,
-                           search=search, job_type=job_type, from_cache=False,
-                           has_next=pagination.has_next, has_prev=pagination.has_prev,
-                           total=pagination.total)
+    return render_template(
+        "jobs/list.html",
+        jobs=jobs_list,
+        page=page,
+        search=search,
+        job_type=job_type,
+        from_cache=False,
+        has_next=pagination.has_next,
+        has_prev=pagination.has_prev,
+        total=pagination.total,
+    )
 
 
 @jobs_bp.route("/<int:job_id>")
 def job_detail(job_id: int):
     job = Job.query.get_or_404(job_id)
     already_applied = False
+
     if current_user.is_authenticated:
         already_applied = Application.query.filter_by(
-            applicant_id=current_user.id, job_id=job_id
+            applicant_id=current_user.id,
+            job_id=job_id,
         ).first() is not None
-    return render_template("jobs/detail.html", job=job, already_applied=already_applied)
+
+    return render_template(
+        "jobs/detail.html",
+        job=job,
+        already_applied=already_applied,
+    )
 
 
 @jobs_bp.route("/create", methods=["GET", "POST"])
@@ -113,23 +130,30 @@ def create_job():
         return redirect(url_for("jobs.list_jobs"))
 
     form = JobForm()
+
     if form.validate_on_submit():
         salary_range = request.form.get("salary_range", "").strip()
+
         job = Job(
             title=form.title.data,
             company=form.company.data,
             location=form.location.data,
-            required_skills=form.required_skills.data.strip() if form.required_skills.data else None,
+            required_skills=form.required_skills.data.strip()
+            if form.required_skills.data
+            else None,
             job_type=form.job_type.data,
             salary_range=salary_range or None,
             description="",
             employer_id=current_user.id,
         )
+
         db.session.add(job)
         db.session.commit()
         _invalidate_job_cache()
+
         logger.info("Job created id=%s by user=%s", job.id, current_user.id)
         flash("Job posted successfully!", "success")
+
         return redirect(url_for("jobs.job_detail", job_id=job.id))
 
     return render_template("jobs/create.html", form=form)
@@ -139,6 +163,7 @@ def create_job():
 @login_required
 def edit_job(job_id: int):
     job = Job.query.get_or_404(job_id)
+
     if job.employer_id != current_user.id:
         flash("You do not have permission to edit this job.", "danger")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
@@ -151,10 +176,13 @@ def edit_job(job_id: int):
         job.salary_range = request.form.get("salary_range", "").strip()
         job.job_type = request.form.get("job_type", job.job_type)
         job.is_active = request.form.get("is_active") == "on"
+
         db.session.commit()
         _invalidate_job_cache()
+
         logger.info("Job updated id=%s by user=%s", job_id, current_user.id)
         flash("Job updated.", "success")
+
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
     return render_template("jobs/edit.html", job=job)
@@ -164,6 +192,7 @@ def edit_job(job_id: int):
 @login_required
 def delete_job(job_id: int):
     job = Job.query.get_or_404(job_id)
+
     if job.employer_id != current_user.id:
         flash("You do not have permission to delete this job.", "danger")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
@@ -171,6 +200,8 @@ def delete_job(job_id: int):
     db.session.delete(job)
     db.session.commit()
     _invalidate_job_cache()
+
     logger.info("Job deleted id=%s by user=%s", job_id, current_user.id)
     flash("Job deleted.", "info")
+
     return redirect(url_for("jobs.list_jobs"))
