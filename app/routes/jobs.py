@@ -13,6 +13,45 @@ jobs_bp = Blueprint("jobs", __name__, url_prefix="/jobs")
 CACHE_KEY_PREFIX = "jobs:page:"
 
 
+def _normalize_skills(skills_text: str) -> set[str]:
+    return {
+        skill.strip().lower()
+        for skill in skills_text.split(",")
+        if skill and skill.strip()
+    }
+
+
+def _with_match_scores(jobs_data: list[dict]) -> list[dict]:
+    if not current_user.is_authenticated or current_user.is_employer:
+        return jobs_data
+
+    user_skills_raw = getattr(current_user, "skills", None)
+    if not user_skills_raw:
+        return jobs_data
+
+    user_skills = _normalize_skills(user_skills_raw)
+    if not user_skills:
+        return jobs_data
+
+    enriched_jobs = []
+    for job in jobs_data:
+        required_raw = (job.get("required_skills") or "").strip()
+        if not required_raw:
+            enriched_jobs.append(job)
+            continue
+
+        required_skills = _normalize_skills(required_raw)
+        if not required_skills:
+            enriched_jobs.append(job)
+            continue
+
+        matched = len(user_skills.intersection(required_skills))
+        score = round((matched / len(required_skills)) * 100)
+        enriched_jobs.append({**job, "match_score": score})
+
+    return enriched_jobs
+
+
 def _invalidate_job_cache() -> None:
     """Remove all cached job-listing pages."""
     try:
@@ -35,9 +74,10 @@ def list_jobs():
             cached = ext.redis_client.get(cache_key)
             if cached:
                 cached_payload = json.loads(cached)
+                jobs_data = _with_match_scores(cached_payload["jobs"])
                 return render_template(
                     "jobs/list.html",
-                    jobs=cached_payload["jobs"],
+                    jobs=jobs_data,
                     page=page,
                     search=search,
                     job_type=job_type,
@@ -74,10 +114,13 @@ def list_jobs():
             "location": j.location,
             "job_type": j.job_type,
             "salary_range": j.salary_range,
+            "required_skills": j.required_skills,
             "created_at": j.created_at.isoformat(),
         }
         for j in pagination.items
     ]
+
+    jobs_list = _with_match_scores(jobs_list)
 
     if not search and not job_type:
         try:

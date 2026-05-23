@@ -38,6 +38,12 @@
               <option value="employer" {% if selected_role == 'employer' %}selected{% endif %}>Employer</option>
             </select>
           </div>
+          <div class="mb-4" id="skills-group" {% if selected_role == 'employer' %}style="display: none;"{% endif %}>
+            <label class="form-label" for="skills">Skills</label>
+            <textarea class="form-control" id="skills" name="skills" rows="3"
+                      placeholder="e.g. Python, Flask, Docker, PostgreSQL">{{ request.form.get('skills', '') }}</textarea>
+            <div class="form-text">Optional. Used to calculate job match percentage.</div>
+          </div>
           <div class="d-grid">
             <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
           </div>
@@ -50,4 +56,21 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const roleSelect = document.getElementById("role");
+    const skillsGroup = document.getElementById("skills-group");
+    if (!roleSelect || !skillsGroup) {
+      return;
+    }
+
+    function toggleSkills() {
+      skillsGroup.style.display = roleSelect.value === "employer" ? "none" : "block";
+    }
+
+    roleSelect.addEventListener("change", toggleSkills);
+    toggleSkills();
+  })();
+</script>
 {% endblock %}

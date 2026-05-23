@@ -20,6 +20,7 @@ def register():
         password = request.form.get("password", "")
         confirm = request.form.get("confirm_password", "")
         role = request.form.get("role", "job_seeker").strip().lower()
+        skills = request.form.get("skills", "").strip()
 
         if role not in VALID_ROLES:
             flash("Invalid role selected.", "danger")
@@ -45,7 +46,12 @@ def register():
             flash("Username or email already taken.", "danger")
             return render_template("auth/register.html", selected_role=role)
 
-        user = User(username=username, email=email, is_employer=is_employer)
+        user = User(
+            username=username,
+            email=email,
+            is_employer=is_employer,
+            skills=skills if (not is_employer and skills) else None,
+        )
         user.set_password(password)
         db.session.add(user)
         db.session.commit()

@@ -30,30 +30,34 @@ def ensure_local_schema_compatibility() -> None:
     """Apply safe additive schema updates for local/dev environments."""
     inspector = inspect(db.engine)
     tables = set(inspector.get_table_names())
-    if "jobs" not in tables:
-        return
-
-    columns = {col["name"] for col in inspector.get_columns("jobs")}
-
     with db.engine.begin() as conn:
-        if "required_skills" not in columns:
-            conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS required_skills TEXT"))
-            logger.info("Applied schema patch: jobs.required_skills")
+        if "jobs" in tables:
+            job_columns = {col["name"] for col in inspector.get_columns("jobs")}
 
-        if "job_type" not in columns:
-            conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_type VARCHAR(50)"))
-            logger.info("Applied schema patch: jobs.job_type")
+            if "required_skills" not in job_columns:
+                conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS required_skills TEXT"))
+                logger.info("Applied schema patch: jobs.required_skills")
 
-        if "employment_type" in columns:
-            conn.execute(text(
-                """
-                UPDATE jobs
-                SET job_type = employment_type
-                WHERE employment_type IS NOT NULL
-                  AND (job_type IS NULL OR job_type = '')
-                """
-            ))
-            logger.info("Applied schema patch: backfilled jobs.job_type from jobs.employment_type")
+            if "job_type" not in job_columns:
+                conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_type VARCHAR(50)"))
+                logger.info("Applied schema patch: jobs.job_type")
+
+            if "employment_type" in job_columns:
+                conn.execute(text(
+                    """
+                    UPDATE jobs
+                    SET job_type = employment_type
+                    WHERE employment_type IS NOT NULL
+                      AND (job_type IS NULL OR job_type = '')
+                    """
+                ))
+                logger.info("Applied schema patch: backfilled jobs.job_type from jobs.employment_type")
+
+        if "users" in tables:
+            user_columns = {col["name"] for col in inspector.get_columns("users")}
+            if "skills" not in user_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT"))
+                logger.info("Applied schema patch: users.skills")
 
 
 def create_app(config_name: str = "default") -> Flask:
