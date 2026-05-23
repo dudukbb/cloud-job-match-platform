@@ -8,7 +8,7 @@
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <form method="POST" action="{{ url_for('jobs.create_job') }}" novalidate>
-          {{ form.hidden_tag() }}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
           {# Job Title #}
           <div class="mb-3">

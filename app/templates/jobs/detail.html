@@ -54,6 +54,7 @@
           <div class="card-body p-4">
             <h5 class="mb-3"><i class="bi bi-send me-2 text-primary"></i>Apply Now</h5>
             <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="mb-3">
                 <label class="form-label" for="cover_letter">Cover Letter <span class="text-muted">(optional)</span></label>
                 <textarea class="form-control" id="cover_letter" name="cover_letter"
@@ -80,6 +81,7 @@
       </a>
       <form method="POST" action="{{ url_for('jobs.delete_job', job_id=job.id) }}"
             onsubmit="return confirm('Delete this job? This cannot be undone.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-outline-danger">
           <i class="bi bi-trash me-1"></i>Delete
         </button>
@@ -101,6 +103,7 @@
             </div>
             <form method="POST" action="{{ url_for('applications.update_status', app_id=app.id) }}"
                   class="d-flex gap-2 align-items-center">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="status" class="form-select form-select-sm" style="width:130px">
                 {% for s in ['pending','reviewed','accepted','rejected'] %}
                 <option value="{{ s }}" {% if app.status == s %}selected{% endif %}>{{ s|title }}</option>
