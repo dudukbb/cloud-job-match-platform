@@ -5,6 +5,10 @@ endblock %} {% block content %}
     <h2 class="mb-0">
       <i class="bi bi-briefcase me-2 text-primary"></i>Job Listings
     </h2>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0ae5eb7 (Improve job action logging)
     {% if from_cache is defined and from_cache %}
     <span class="badge bg-secondary ms-2" title="Served from Redis cache">
       <i class="bi bi-lightning-fill"></i> cached
@@ -21,37 +25,61 @@ endblock %} {% block content %}
   {% endif %}
 </div>
 
+<<<<<<< HEAD
+=======
+<!-- Search / Filter -->
+>>>>>>> 0ae5eb7 (Improve job action logging)
 <form method="GET" action="{{ url_for('jobs.list_jobs') }}" class="mb-4">
   <div class="row g-2">
+
     <div class="col-md-6">
       <input
         type="text"
         class="form-control"
         name="q"
+<<<<<<< HEAD
         placeholder="Search title, company, location…"
         value="{{ search }}"
       />
+=======
+        placeholder="Search title, company, location..."
+        value="{{ search }}"
+      >
+>>>>>>> 0ae5eb7 (Improve job action logging)
     </div>
+
     <div class="col-md-3">
       <select class="form-select" name="type">
         <option value="">All Types</option>
+<<<<<<< HEAD
         {% for t in ["Full-time","Part-time","Contract","Remote","Internship"]
         %}
         <option value="{{ t }}" {% if job_type="" ="t" %}selected{% endif %}>
           {{ t }}
         </option>
+=======
+
+        {% for t in ["Full-time","Part-time","Contract","Remote","Internship"] %}
+          <option value="{{ t }}" {% if job_type == t %}selected{% endif %}>
+            {{ t }}
+          </option>
+>>>>>>> 0ae5eb7 (Improve job action logging)
         {% endfor %}
+
       </select>
     </div>
+
     <div class="col-md-3">
       <button type="submit" class="btn btn-outline-primary w-100">
         <i class="bi bi-search me-1"></i>Search
       </button>
     </div>
+
   </div>
 </form>
 
 {% if jobs %}
+<<<<<<< HEAD
 <p class="text-muted">
   {% if total is defined %}{{ total }} job{{ 's' if total != 1 }} found{% endif
   %}
@@ -72,6 +100,57 @@ endblock %} {% block content %}
             </a>
           </h5>
           <span class="badge bg-info text-dark ms-2">{{ job.job_type }}</span>
+=======
+
+  <p class="text-muted">
+    {% if total is defined %}
+      {{ total }} job{{ 's' if total != 1 }} found
+    {% endif %}
+  </p>
+
+  <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+
+    {% for job in jobs %}
+    <div class="col">
+      <div class="card job-card h-100 shadow-sm">
+
+        <div class="card-body">
+
+          <div class="d-flex justify-content-between align-items-start">
+
+            <h5 class="card-title mb-1">
+              <a
+                href="{{ url_for('jobs.job_detail', job_id=job.id) }}"
+                class="text-decoration-none stretched-link"
+              >
+                {{ job.title }}
+              </a>
+            </h5>
+
+            <span class="badge bg-info text-dark ms-2">
+              {{ job.job_type }}
+            </span>
+
+          </div>
+
+          <p class="card-subtitle text-muted mb-2">
+            <i class="bi bi-building me-1"></i>{{ job.company }}
+            &nbsp;
+            <i class="bi bi-geo-alt me-1"></i>{{ job.location }}
+          </p>
+
+          {% if job.salary_range %}
+          <p class="mb-0 small text-success">
+            <i class="bi bi-currency-dollar"></i>
+            {{ job.salary_range }}
+          </p>
+          {% endif %}
+
+          <p class="mb-0 small text-muted mt-1">
+            <i class="bi bi-clock me-1"></i>{{ job.created_at[:10] }}
+          </p>
+
+>>>>>>> 0ae5eb7 (Improve job action logging)
         </div>
 
         <p class="card-subtitle text-muted mb-2">
@@ -90,10 +169,16 @@ endblock %} {% block content %}
         </p>
       </div>
     </div>
+<<<<<<< HEAD
+=======
+    {% endfor %}
+
+>>>>>>> 0ae5eb7 (Improve job action logging)
   </div>
   {% endfor %}
 </div>
 
+<<<<<<< HEAD
 <nav>
   <ul class="pagination justify-content-center">
     <li class="page-item {% if not has_prev %}disabled{% endif %}">
@@ -122,3 +207,47 @@ endblock %} {% block content %}
   <p class="small">Try changing the search keyword or employment type.</p>
 </div>
 {% endif %} {% endblock %}
+=======
+  <!-- Pagination -->
+  <nav>
+    <ul class="pagination justify-content-center">
+
+      <li class="page-item {% if not has_prev %}disabled{% endif %}">
+        <a class="page-link"
+           href="?page={{ page - 1 }}&q={{ search }}&type={{ job_type }}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+
+      <li class="page-item active">
+        <span class="page-link">{{ page }}</span>
+      </li>
+
+      <li class="page-item {% if not has_next %}disabled{% endif %}">
+        <a class="page-link"
+           href="?page={{ page + 1 }}&q={{ search }}&type={{ job_type }}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+
+{% else %}
+
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-inbox display-4"></i>
+
+    <p class="mt-3 mb-1">
+      No jobs found for the selected filters.
+    </p>
+
+    <p class="small">
+      Try changing the search keyword or employment type.
+    </p>
+  </div>
+
+{% endif %}
+
+{% endblock %}
+>>>>>>> 0ae5eb7 (Improve job action logging)
