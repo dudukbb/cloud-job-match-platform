@@ -114,12 +114,14 @@ def create_job():
 
     form = JobForm()
     if form.validate_on_submit():
+        salary_range = request.form.get("salary_range", "").strip()
         job = Job(
             title=form.title.data,
             company=form.company.data,
             location=form.location.data,
             required_skills=form.required_skills.data.strip() if form.required_skills.data else None,
             job_type=form.job_type.data,
+            salary_range=salary_range or None,
             description="",
             employer_id=current_user.id,
         )

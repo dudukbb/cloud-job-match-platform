@@ -49,6 +49,17 @@
             </div>
           </div>
 
+          {# Salary Range #}
+          <div class="mb-3">
+            <label class="form-label" for="salary_range">Salary Range</label>
+            <input type="text"
+                   class="form-control"
+                   id="salary_range"
+                   name="salary_range"
+                   value="{{ request.form.get('salary_range', '') }}"
+                   placeholder="e.g. $90,000 - $120,000">
+          </div>
+
           {# Required Skills #}
           <div class="mb-4">
             {{ form.required_skills.label(class="form-label") }}
