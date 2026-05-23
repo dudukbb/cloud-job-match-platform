@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import Job, Application
+from app.skill_matching import extract_resume_text, extract_skills_from_text, format_skills, normalize_skills
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,23 @@ def apply(job_id: int):
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
     cover_letter = request.form.get("cover_letter", "").strip()
+
+    resume = request.files.get("resume")
+    if resume and resume.filename:
+        try:
+            resume_bytes = resume.read()
+            extracted_text = extract_resume_text(resume.filename, resume_bytes)
+            extracted_skills = extract_skills_from_text(extracted_text)
+            if extracted_skills:
+                existing_skills = normalize_skills(current_user.skills or "")
+                combined_skills = existing_skills.union(extracted_skills)
+                current_user.skills = format_skills(combined_skills)
+                flash("Resume processed. Skills profile updated for better job matching.", "info")
+            else:
+                flash("Resume uploaded, but no known technical skills were extracted.", "warning")
+        except Exception:
+            flash("Resume upload could not be processed. Application was still submitted.", "warning")
+
     application = Application(
         applicant_id=current_user.id,
         job_id=job_id,

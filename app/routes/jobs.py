@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import Job, Application
 from app.forms import JobForm
+from app.skill_matching import build_match_summary
 import app.extensions as ext
 import json
 import logging
@@ -13,14 +14,6 @@ jobs_bp = Blueprint("jobs", __name__, url_prefix="/jobs")
 CACHE_KEY_PREFIX = "jobs:page:"
 
 
-def _normalize_skills(skills_text: str) -> set[str]:
-    return {
-        skill.strip().lower()
-        for skill in skills_text.split(",")
-        if skill and skill.strip()
-    }
-
-
 def _with_match_scores(jobs_data: list[dict]) -> list[dict]:
     if not current_user.is_authenticated or current_user.is_employer:
         return jobs_data
@@ -29,25 +22,14 @@ def _with_match_scores(jobs_data: list[dict]) -> list[dict]:
     if not user_skills_raw:
         return jobs_data
 
-    user_skills = _normalize_skills(user_skills_raw)
-    if not user_skills:
-        return jobs_data
-
     enriched_jobs = []
     for job in jobs_data:
-        required_raw = (job.get("required_skills") or "").strip()
-        if not required_raw:
+        summary = build_match_summary(user_skills_raw, job.get("required_skills") or "")
+        if not summary:
             enriched_jobs.append(job)
             continue
 
-        required_skills = _normalize_skills(required_raw)
-        if not required_skills:
-            enriched_jobs.append(job)
-            continue
-
-        matched = len(user_skills.intersection(required_skills))
-        score = round((matched / len(required_skills)) * 100)
-        enriched_jobs.append({**job, "match_score": score})
+        enriched_jobs.append({**job, **summary})
 
     return enriched_jobs
 
@@ -151,6 +133,7 @@ def list_jobs():
 def job_detail(job_id: int):
     job = Job.query.get_or_404(job_id)
     already_applied = False
+    compatibility = None
 
     if current_user.is_authenticated:
         already_applied = Application.query.filter_by(
@@ -158,10 +141,17 @@ def job_detail(job_id: int):
             job_id=job_id,
         ).first() is not None
 
+        if not current_user.is_employer:
+            compatibility = build_match_summary(
+                getattr(current_user, "skills", "") or "",
+                job.required_skills or "",
+            )
+
     return render_template(
         "jobs/detail.html",
         job=job,
         already_applied=already_applied,
+        compatibility=compatibility,
     )
 
 

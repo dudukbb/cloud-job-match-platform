@@ -53,8 +53,12 @@
         <div class="card shadow-sm">
           <div class="card-body p-4">
             <h5 class="mb-3"><i class="bi bi-send me-2 text-primary"></i>Apply Now</h5>
-            <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}">
+            <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}" enctype="multipart/form-data">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="mb-3">
+                <label class="form-label" for="resume">Resume / CV <span class="text-muted">(PDF preferred, DOCX optional)</span></label>
+                <input class="form-control" type="file" id="resume" name="resume" accept=".pdf,.docx">
+              </div>
               <div class="mb-3">
                 <label class="form-label" for="cover_letter">Cover Letter <span class="text-muted">(optional)</span></label>
                 <textarea class="form-control" id="cover_letter" name="cover_letter"
@@ -71,6 +75,29 @@
       <div class="alert alert-info">
         <a href="{{ url_for('auth.login') }}" class="alert-link">Log in</a> to apply for this job.
       </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and not current_user.is_employer and compatibility %}
+    <div class="card shadow-sm mt-3">
+      <div class="card-body p-4">
+        <h5 class="mb-3"><i class="bi bi-bullseye me-2 text-primary"></i>Compatibility Summary</h5>
+        <p class="mb-2"><strong>Match:</strong> {{ compatibility.match_score }}%</p>
+        <p class="mb-2"><strong>Matched:</strong>
+          {% if compatibility.matched_skills %}
+            {{ compatibility.matched_skills|join(', ') }}
+          {% else %}
+            None
+          {% endif %}
+        </p>
+        <p class="mb-0"><strong>Missing:</strong>
+          {% if compatibility.missing_skills %}
+            {{ compatibility.missing_skills|join(', ') }}
+          {% else %}
+            None
+          {% endif %}
+        </p>
+      </div>
+    </div>
     {% endif %}
 
     <!-- Employer actions -->
