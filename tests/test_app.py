@@ -48,6 +48,7 @@ def test_protected_route_redirects(client):
 
 def test_jobs_list_when_redis_unavailable(client, monkeypatch):
     import app.extensions as ext
+    from app.models import Job
 
     class FailingRedis:
         def get(self, _key):
@@ -62,7 +63,27 @@ def test_jobs_list_when_redis_unavailable(client, monkeypatch):
         def delete(self, _key):
             return 0
 
+    class FakePagination:
+        items = []
+        has_next = False
+        has_prev = False
+        total = 0
+
+    class FakeQuery:
+        def filter_by(self, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def order_by(self, *_args, **_kwargs):
+            return self
+
+        def paginate(self, **_kwargs):
+            return FakePagination()
+
     monkeypatch.setattr(ext, "redis_client", FailingRedis())
+    monkeypatch.setattr(Job, "query", FakeQuery())
 
     resp = client.get("/jobs/")
     assert resp.status_code == 200
