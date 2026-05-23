@@ -61,6 +61,8 @@ class Application(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     cover_letter = db.Column(db.Text)
+    resume_filename = db.Column(db.String(255))
+    resume_path = db.Column(db.String(500))
     status = db.Column(db.String(30), default="pending")  # pending, reviewed, accepted, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

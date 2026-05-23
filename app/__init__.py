@@ -59,6 +59,15 @@ def ensure_local_schema_compatibility() -> None:
                 conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT"))
                 logger.info("Applied schema patch: users.skills")
 
+        if "applications" in tables:
+            app_columns = {col["name"] for col in inspector.get_columns("applications")}
+            if "resume_filename" not in app_columns:
+                conn.execute(text("ALTER TABLE applications ADD COLUMN IF NOT EXISTS resume_filename VARCHAR(255)"))
+                logger.info("Applied schema patch: applications.resume_filename")
+            if "resume_path" not in app_columns:
+                conn.execute(text("ALTER TABLE applications ADD COLUMN IF NOT EXISTS resume_path VARCHAR(500)"))
+                logger.info("Applied schema patch: applications.resume_path")
+
 
 def create_app(config_name: str = "default") -> Flask:
     app = Flask(__name__)
