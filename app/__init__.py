@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from config import config_map
 from app.extensions import db, login_manager, bcrypt, csrf
 import redis as redis_lib
+from prometheus_flask_exporter import PrometheusMetrics
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,16 @@ def create_app(config_name: str = "default") -> Flask:
     ext.redis_client = redis_lib.from_url(
         app.config["REDIS_URL"], decode_responses=True
     )
+
+    # Prometheus Metrics — lightweight observability without breaking existing routes
+    # PrometheusMetrics automatically creates a /metrics endpoint for Prometheus scraping.
+    # Tracks HTTP request count, latency, and response status codes.
+    # The app works normally if Prometheus is not actively scraping.
+    try:
+        metrics = PrometheusMetrics(app)
+        logger.info("Prometheus metrics enabled at /metrics endpoint")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Prometheus metrics: {e}. App will continue without metrics.")
 
     # Register blueprints
     from app.routes.auth import auth_bp
