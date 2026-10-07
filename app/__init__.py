@@ -113,9 +113,6 @@ def create_app(config_name: str = "default") -> Flask:
     )
 
     # Prometheus Metrics — lightweight observability without breaking existing routes
-    # PrometheusMetrics automatically creates a /metrics endpoint for Prometheus scraping.
-    # Tracks HTTP request count, latency, and response status codes.
-    # The app works normally if Prometheus is not actively scraping.
     try:
         metrics = PrometheusMetrics(app)
         logger.info("Prometheus metrics enabled at /metrics endpoint")
@@ -133,7 +130,7 @@ def create_app(config_name: str = "default") -> Flask:
     app.register_blueprint(applications_bp)
     app.register_blueprint(health_bp)
 
-    # Create tables (idempotent)
+    # Create tables (idempotent) - Controlled via environment variable to prevent worker boot conflicts
     auto_create_tables = os.environ.get("AUTO_CREATE_TABLES", "true").lower() == "true"
     with app.app_context():
         if auto_create_tables:
